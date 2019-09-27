@@ -15,16 +15,23 @@ name = "liquid_rpc"
 path = "src/lib.rs"
 
 [dependencies]
-liquid-rpc-json = { version = "0.1.0", path = "../json" }
-bitcoincore-rpc = "0.7"
-
-jsonrpc = "0.11"
-
-serde_json = "1.0.39"
-serde = { version = "1.0.89", features = [ "derive" ] }
-hex = "0.3.2"
-
+bitcoin = "0.19"
 bitcoin = { version = "0.18", features = [ "use-serde" ] }
-elements = { version = "0.7.0", features = [ "serde-feature" ] }
 bitcoin_hashes = "0.7.0"
+elements = { version = "0.7.0", features = [ "serde-feature" ] }
+hex = "0.3.2"
+liquid-rpc-json = { version = "0.1.0", path = "../json" }
 secp256k1 = { version = "0.12", features = [ "serde" ] }
+serde = { version = "1.0.89", features = [ "derive" ] }
+serde_json = "1.0.39"
+
+[dependencies.bitcoincore-rpc]
+git = "https://github.com/jb55/rust-bitcoincore-rpc"
+rev = "6fe1a02203954ce45c5bd240c32d0393babddd2d"
+
+[dependencies.jsonrpc]
+git = "https://github.com/jb55/rust-jsonrpc"
+rev = "5e4dd4817641aa2f5b9981b4ea7f3bca52e0b3d9"
+
+
+
