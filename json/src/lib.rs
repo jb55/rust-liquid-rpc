@@ -17,11 +17,9 @@
 #![crate_type = "rlib"]
 
 extern crate bitcoin;
-extern crate bitcoin_hashes;
 extern crate bitcoincore_rpc;
 extern crate elements;
 extern crate hex;
-extern crate secp256k1;
 extern crate serde;
 extern crate serde_json;
 
@@ -33,8 +31,8 @@ use std::result;
 
 use bitcoin::consensus::encode;
 use bitcoin::{PublicKey, Script};
-use bitcoin_hashes::hex::FromHex;
-use bitcoin_hashes::{sha256, sha256d};
+use bitcoin::hashes::hex::FromHex;
+use bitcoin::hashes::{sha256, sha256d};
 use bitcoincore_rpc::json::serde_hex;
 use bitcoincore_rpc::Result;
 use serde::de::Error;
@@ -157,7 +155,8 @@ impl GetRawTransationResultVinIssuance {
         Ok(elements::AssetIssuance {
             asset_blinding_nonce: {
                 if self.asset_blinding_nonce.len() != 32 {
-                    return Err(encode::Error::ParseFailed("invalid asset blinding nonce").into());
+                    let err = encode::Error::ParseFailed( "invalid asset blinding nonce");
+                    return Err(bitcoincore_rpc::Error::BitcoinSerialization(err));
                 }
                 let mut a = [0; 32];
                 a.copy_from_slice(&self.asset_blinding_nonce);
@@ -174,14 +173,16 @@ impl GetRawTransationResultVinIssuance {
             amount: if let Some(amount) = self.asset_amount {
                 elements::confidential::Value::Explicit(amount.as_sat() as u64)
             } else if let Some(ref commitment) = self.asset_amount_commitment {
-                encode::deserialize(&commitment)?
+                // TODO: fix error conversion from elements error to rpc error
+                elements::encode::deserialize(&commitment).unwrap()
             } else {
                 return Err(encode::Error::ParseFailed("missing issuance amount info").into());
             },
             inflation_keys: if let Some(amount) = self.token_amount {
                 elements::confidential::Value::Explicit(amount.as_sat() as u64)
             } else if let Some(ref commitment) = self.token_amount_commitment {
-                encode::deserialize(&commitment)?
+                // TODO: fix error conversion from elements error to rpc error
+                elements::encode::deserialize(&commitment).unwrap()
             } else {
                 return Err(encode::Error::ParseFailed("missing issuance token info").into());
             },
@@ -288,7 +289,8 @@ pub struct GetRawTransactionResult {
 
 impl GetRawTransactionResult {
     pub fn transaction(&self) -> Result<elements::Transaction> {
-        Ok(encode::deserialize(&self.hex)?)
+        // TODO: fix error conversion from elements error to rpc error
+        Ok(elements::encode::deserialize(&self.hex).unwrap())
     }
 }
 
@@ -330,7 +332,8 @@ pub struct FundRawTransactionResult {
 
 impl FundRawTransactionResult {
     pub fn transaction(&self) -> Result<elements::Transaction> {
-        Ok(encode::deserialize(&self.hex)?)
+        // TODO: fix error conversion from elements error to rpc error
+        Ok(elements::encode::deserialize(&self.hex).unwrap())
     }
 }
 
@@ -365,7 +368,7 @@ pub struct SignRawTransactionResult {
 
 impl SignRawTransactionResult {
     pub fn transaction(&self) -> Result<elements::Transaction> {
-        Ok(encode::deserialize(&self.hex)?)
+        Ok(elements::encode::deserialize(&self.hex).unwrap())
     }
 }
 
@@ -573,7 +576,8 @@ pub struct CreateRawPeginResult {
 
 impl CreateRawPeginResult {
     pub fn transaction(&self) -> Result<elements::Transaction> {
-        Ok(encode::deserialize(&self.hex)?)
+        // TODO: fix error conversion from elements error to rpc error
+        Ok(elements::encode::deserialize(&self.hex).unwrap())
     }
 }
 
@@ -699,7 +703,8 @@ pub struct RawReissueAssetResult {
 
 impl RawReissueAssetResult {
     pub fn transaction(&self) -> Result<elements::Transaction> {
-        Ok(encode::deserialize(&self.hex)?)
+        // TODO: fix error conversion from elements error to rpc error
+        Ok(elements::encode::deserialize(&self.hex).unwrap())
     }
 }
 
@@ -711,7 +716,8 @@ pub struct UnblindRawTransactionResult {
 
 impl UnblindRawTransactionResult {
     pub fn transaction(&self) -> Result<elements::Transaction> {
-        Ok(encode::deserialize(&self.hex)?)
+        // TODO: fix error conversion from elements error to rpc error
+        Ok(elements::encode::deserialize(&self.hex).unwrap())
     }
 }
 
@@ -730,6 +736,7 @@ pub struct CombineBlockSigsResult {
 
 impl CombineBlockSigsResult {
     pub fn block(&self) -> Result<elements::Block> {
-        Ok(encode::deserialize(&self.hex)?)
+        // TODO: fix error conversion from elements error to rpc error
+        Ok(elements::encode::deserialize(&self.hex).unwrap())
     }
 }

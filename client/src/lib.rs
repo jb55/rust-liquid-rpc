@@ -17,12 +17,10 @@
 #![crate_type = "rlib"]
 
 pub extern crate bitcoin;
-pub extern crate bitcoin_hashes;
 pub extern crate bitcoincore_rpc;
 pub extern crate elements;
 extern crate hex;
 extern crate jsonrpc;
-pub extern crate secp256k1;
 extern crate serde;
 extern crate serde_json;
 
@@ -35,12 +33,12 @@ pub use bitcoincore_rpc::{Auth, Error, Result};
 
 use std::collections::HashMap;
 
-use bitcoin::consensus::encode;
+use bitcoin::hashes::hex::FromHex;
 use bitcoin::util::bip32;
 //TODO(stevenroose) use secp public key as soon as it has hex serde
 use bitcoin::{PublicKey, Script};
-use bitcoin_hashes::sha256d;
-use secp256k1::SecretKey;
+use bitcoin::hashes::sha256d;
+use bitcoin::secp256k1::SecretKey;
 
 /// Serialize an amount returned by the RPC.
 fn ser_amount(amount: &Amount) -> serde_json::Value {
@@ -172,7 +170,7 @@ pub trait RawTx: Sized {
 
 impl<'a> RawTx for &'a elements::Transaction {
     fn raw_hex(self) -> String {
-        hex::encode(bitcoin::consensus::encode::serialize(self))
+        hex::encode(elements::encode::serialize(self))
     }
 }
 
@@ -209,9 +207,9 @@ pub trait LiquidRpcApi: Sized {
     ) -> Result<T>;
 
     fn get_block_header_raw(&self, hash: &sha256d::Hash) -> Result<elements::BlockHeader> {
-        let hex: String = self.call("getblockheader", &[into_json(hash)?, false.into()])?;
-        let bytes = hex::decode(hex)?;
-        Ok(encode::deserialize(&bytes)?)
+        let hex_str: String = self.call("getblockheader", &[into_json(hash)?, false.into()])?;
+        let bytes : Vec<u8> = FromHex::from_hex(&hex_str)?;
+        Ok(elements::encode::deserialize(&bytes).unwrap())
     }
 
     fn get_block_header_verbose(&self, hash: &sha256d::Hash) -> Result<json::GetBlockHeaderResult> {
@@ -230,9 +228,11 @@ pub trait LiquidRpcApi: Sized {
         block_hash: Option<&sha256d::Hash>,
     ) -> Result<elements::Transaction> {
         let mut args = [into_json(txid)?, into_json(false)?, opt_into_json(block_hash)?];
-        let hex: String = self.call("getrawtransaction", handle_defaults(&mut args, &[null()]))?;
-        let bytes = hex::decode(hex)?;
-        Ok(encode::deserialize(&bytes)?)
+        let hex_str: String = self.call("getrawtransaction", handle_defaults(&mut args, &[null()]))?;
+        let bytes : Vec<u8> = FromHex::from_hex(&hex_str)?;
+
+        // TODO: fix error conversion from elements error to rpc error
+        Ok(elements::encode::deserialize(&bytes).unwrap())
     }
 
     fn get_raw_transaction_verbose(
@@ -299,10 +299,11 @@ pub trait LiquidRpcApi: Sized {
         replaceable: Option<bool>,
         assets: Option<&HashMap<String, AssetId>>,
     ) -> Result<elements::Transaction> {
-        let hex: String =
+        let hex_str: String =
             self.create_raw_transaction_hex(utxos, outs, locktime, replaceable, assets)?;
-        let bytes = hex::decode(hex)?;
-        Ok(encode::deserialize(&bytes)?)
+        let bytes : Vec<u8> = FromHex::from_hex(&hex_str)?;
+        // TODO: fix error conversion from elements error to rpc error
+        Ok(elements::encode::deserialize(&bytes).unwrap())
     }
 
     fn fund_raw_transaction<R: RawTx>(
@@ -647,12 +648,13 @@ pub trait LiquidRpcApi: Sized {
             opt_into_json(commitments)?,
             opt_into_json(blind_issuances)?,
         ];
-        let hex: String = self.call(
+        let hex_str: String = self.call(
             "blindrawtransaction",
             handle_defaults(&mut args, &[true.into(), empty(), null()]),
         )?;
-        let bytes = hex::decode(hex)?;
-        Ok(encode::deserialize(&bytes)?)
+        let bytes : Vec<u8> = FromHex::from_hex(&hex_str)?;
+        // TODO: fix error conversion from elements error to rpc error
+        Ok(elements::encode::deserialize(&bytes).unwrap())
     }
 
     fn unblind_raw_transaction<R: RawTx>(
@@ -686,11 +688,12 @@ pub trait LiquidRpcApi: Sized {
             into_json(asset_bfs?)?,
             opt_into_json(ignore_blind_fail)?,
         ];
-        let hex: String =
+        let hex_str: String =
             self.call("rawblindrawtransaction", handle_defaults(&mut args, &[null()]))?;
-        let bytes = hex::decode(hex)?;
-        Ok(encode::deserialize(&bytes)?)
-    }
+        let bytes : Vec<u8> = FromHex::from_hex(&hex_str)?;
+        // TODO: fix error conversion from elements error to rpc error
+        Ok(elements::encode::deserialize(&bytes).unwrap())}
+        
 
     fn create_blinded_address(&self, address: &str, blinding_pubkey: &PublicKey) -> Result<String> {
         let mut args = [
@@ -702,9 +705,10 @@ pub trait LiquidRpcApi: Sized {
     }
 
     fn dump_blinding_key(&self, address: &str) -> Result<SecretKey> {
-        let hex: String = self.call("dumpblindingkey", &[into_json_hex(address)?])?;
-        let bytes = hex::decode(hex)?;
-        Ok(SecretKey::from_slice(&bytes).map_err(encode::Error::Secp256k1)?)
+        let hex_str: String = self.call("dumpblindingkey", &[into_json_hex(address)?])?;
+        let bytes : Vec<u8> = FromHex::from_hex(&hex_str)?;
+        // TODO: fix error conversion from elements error to rpc error
+        Ok(SecretKey::from_slice(&bytes).unwrap())
     }
 
     fn import_blinding_key(&self, address: &str, blinding_key: &SecretKey) -> Result<()> {
@@ -713,9 +717,10 @@ pub trait LiquidRpcApi: Sized {
     }
 
     fn dump_master_blinding_key(&self) -> Result<SecretKey> {
-        let hex: String = self.call("dumpmasterblindingkey", &[])?;
-        let bytes = hex::decode(hex)?;
-        Ok(SecretKey::from_slice(&bytes).map_err(encode::Error::Secp256k1)?)
+        let hex_str: String = self.call("dumpmasterblindingkey", &[])?;
+        let bytes : Vec<u8> = FromHex::from_hex(&hex_str)?;
+        // TODO: fix error conversion from elements error to rpc error
+        Ok(SecretKey::from_slice(&bytes).unwrap())
     }
 
     fn import_master_blinding_key(&self, master_blinding_key: &SecretKey) -> Result<()> {
@@ -723,9 +728,10 @@ pub trait LiquidRpcApi: Sized {
     }
 
     fn dump_issuance_blinding_key(&self, txid: &sha256d::Hash, vin: u32) -> Result<SecretKey> {
-        let hex: String = self.call("dumpissuanceblindingkey", &[into_json(txid)?, vin.into()])?;
-        let bytes = hex::decode(hex)?;
-        Ok(SecretKey::from_slice(&bytes).map_err(encode::Error::Secp256k1)?)
+        let hex_str: String =
+            self.call("dumpissuanceblindingkey", &[into_json(txid)?, vin.into()])?;
+        let bytes : Vec<u8> = FromHex::from_hex(&hex_str)?;
+        Ok(SecretKey::from_slice(&bytes).unwrap())
     }
 
     fn import_issuance_blinding_key(
@@ -740,13 +746,14 @@ pub trait LiquidRpcApi: Sized {
 
     fn get_new_block(&self, min_tx_age_secs: Option<usize>) -> Result<elements::Block> {
         let mut args = [opt_into_json(min_tx_age_secs)?];
-        let hex: String = self.call("getnewblockhex", handle_defaults(&mut args, &[null()]))?;
-        let bytes = hex::decode(hex)?;
-        Ok(encode::deserialize(&bytes)?)
+        let hex_str: String = self.call("getnewblockhex", handle_defaults(&mut args, &[null()]))?;
+        let bytes : Vec<u8> = FromHex::from_hex(&hex_str)?;
+        // TODO: fix error conversion from elements error to rpc error
+        Ok(elements::encode::deserialize(&bytes).unwrap())
     }
 
     fn sign_block(&self, block: &elements::Block) -> Result<Vec<json::SignedBlockSignature>> {
-        self.call("signblock", &[into_json_hex(encode::serialize(block))?])
+        self.call("signblock", &[into_json_hex(elements::encode::serialize(block))?])
     }
 
     fn combine_block_signatures(
@@ -754,7 +761,7 @@ pub trait LiquidRpcApi: Sized {
         block: &elements::Block,
         signatures: &[json::SignedBlockSignature],
     ) -> Result<json::CombineBlockSigsResult> {
-        let args = [into_json_hex(encode::serialize(block))?, into_json(signatures)?];
+        let args = [into_json_hex(elements::encode::serialize(block))?, into_json(signatures)?];
         self.call("combineblocksigs", &args)
     }
 
@@ -764,12 +771,12 @@ pub trait LiquidRpcApi: Sized {
         accept_non_standard: Option<bool>,
     ) -> Result<()> {
         let mut args =
-            [into_json_hex(encode::serialize(block))?, opt_into_json(accept_non_standard)?];
+            [into_json_hex(elements::encode::serialize(block))?, opt_into_json(accept_non_standard)?];
         self.call("testproposedblock", handle_defaults(&mut args, &[null()]))
     }
 
     fn submit_block(&self, block: &elements::Block) -> Result<String> {
-        self.call("submitblock", &[into_json_hex(encode::serialize(block))?])
+        self.call("submitblock", &[into_json_hex(elements::encode::serialize(block))?])
     }
 
     //TODO(stevenroose)
